@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import React, { useState } from 'react'
 
 const SEGMENT_COLS = ["Diagnostic","Model","Control","Pilot combined","Pilot group - no SW","Pilot group - SW","Top agent","Top agent - SW"]
 const METRICS = ["Volume","Attempt","Saves"]
