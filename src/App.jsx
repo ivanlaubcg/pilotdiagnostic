@@ -94,11 +94,36 @@ export default function App() {
     setActiveCats(cats.filter(c=>!EXCL_CATS.some(e=>c.toLowerCase().includes(e))&&!(c.toLowerCase().includes("overall")&&c.toLowerCase().includes("excl"))))
   }
 
+  // Load from CSV file in public folder on mount
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem("dmp_data")
-      if (saved) { const { rows, fileName: fn } = JSON.parse(saved); if (rows?.length) applyData(rows, fn) }
-    } catch(e) {}
+    fetch("/data.csv")
+      .then(r => r.text())
+      .then(text => {
+        Papa.parse(text, { header:true, dynamicTyping:false, skipEmptyLines:true, complete: r => {
+          const rows = r.data
+          const csvCols = Object.keys(rows[0]||{})
+          const colMap = {}
+          SEGMENT_COLS.forEach(expected => {
+            const el = expected.toLowerCase().trim()
+            const match = csvCols.find(c=>c.toLowerCase().trim()===el)
+              || csvCols.find(c=>c.toLowerCase().trim()===el.slice(0,c.length)&&c.length>=el.length-2)
+            if (match) colMap[expected] = match
+          })
+          const normalized = rows.map(row => {
+            const nr = {"Cancellation Reason":(row["Cancellation Reason"]||"").trim(),"Metric":(row["Metric"]||"").trim()}
+            SEGMENT_COLS.forEach(seg=>{ nr[seg]=colMap[seg]?row[colMap[seg]]:null })
+            return nr
+          }).filter(r=>r["Cancellation Reason"]&&r["Metric"])
+          if (normalized.length) applyData(normalized, "data.csv")
+        }})
+      })
+      .catch(() => {
+        // fallback to localStorage if no CSV found
+        try {
+          const saved = localStorage.getItem("dmp_data")
+          if (saved) { const { rows, fileName: fn } = JSON.parse(saved); if (rows?.length) applyData(rows, fn) }
+        } catch(e) {}
+      })
   }, [])
 
   useEffect(() => {
